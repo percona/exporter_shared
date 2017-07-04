@@ -1,4 +1,4 @@
-package exporter_common
+package exporter_shared
 
 import (
 	"crypto/subtle"
