@@ -1,2 +1,3 @@
 # exporter_shared
-Shared Code for Percona exporters
+
+Shared code for Percona Prometheus exporters.
