@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 )
 
@@ -46,7 +47,7 @@ var (
 // RunServer runs server for exporter with given name (it is used on landing page) on given address,
 // exposing metrics under given path.
 // Function never returns.
-func RunServer(name, addr, path string) {
+func RunServer(name, addr, path string, errorHandling promhttp.HandlerErrorHandling) {
 	if (*sslCertFileF == "") != (*sslKeyFileF == "") {
 		log.Fatal("One of the flags -web.ssl-cert-file or -web.ssl-key-file is missing to enable HTTPS.")
 	}
@@ -62,7 +63,7 @@ func RunServer(name, addr, path string) {
 		ssl = true
 	}
 
-	handler := handler()
+	handler := handler(errorHandling)
 	var buf bytes.Buffer
 	data := map[string]string{"name": name, "path": path}
 	if err := landingPage.Execute(&buf, data); err != nil {
