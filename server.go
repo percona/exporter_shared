@@ -103,7 +103,7 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 		TLSConfig:    tlsCfg,
 		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)), // disable HTTP/2
 	}
-	log.Infof("Starting HTTPS server on %s ...", addr)
+	log.Infof("Starting HTTPS server for https://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServeTLS(*sslCertFileF, *sslKeyFileF))
 }
 
@@ -118,6 +118,6 @@ func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 		Addr:    addr,
 		Handler: mux,
 	}
-	log.Infof("Starting HTTP server on %s ...", addr)
+	log.Infof("Starting HTTP server for http://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServe())
 }
