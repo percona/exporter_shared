@@ -47,8 +47,7 @@ type Metric struct {
 // ReadMetric extracts details from Prometheus metric.
 func ReadMetric(m prometheus.Metric) *Metric {
 	pb := &dto.Metric{}
-	err := m.Write(pb)
-	if err != nil {
+	if err := m.Write(pb); err != nil {
 		panic(err)
 	}
 
