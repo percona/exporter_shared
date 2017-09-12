@@ -26,11 +26,12 @@ func TestReadMetric(t *testing.T) {
 	for expected, m := range map[*Metric]prometheus.Metric{
 		&Metric{
 			"counter",
+			"metric description",
 			prometheus.Labels{"job": "test1", "instance": "test2"},
 			dto.MetricType_COUNTER,
 			36.6,
 		}: prometheus.MustNewConstMetric(
-			prometheus.NewDesc("counter", "unused #HELP text", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
 			prometheus.CounterValue,
 			36.6,
 			"test2",
@@ -38,11 +39,12 @@ func TestReadMetric(t *testing.T) {
 
 		&Metric{
 			"gauge",
+			"metric description",
 			prometheus.Labels{"job": "test1", "instance": "test2"},
 			dto.MetricType_GAUGE,
 			36.6,
 		}: prometheus.MustNewConstMetric(
-			prometheus.NewDesc("gauge", "unused #HELP text", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("gauge", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
 			prometheus.GaugeValue,
 			36.6,
 			"test2",
@@ -50,11 +52,12 @@ func TestReadMetric(t *testing.T) {
 
 		&Metric{
 			"untyped",
+			"metric description",
 			prometheus.Labels{"job": "test1", "instance": "test2"},
 			dto.MetricType_UNTYPED,
 			36.6,
 		}: prometheus.MustNewConstMetric(
-			prometheus.NewDesc("untyped", "unused #HELP text", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("untyped", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
 			prometheus.UntypedValue,
 			36.6,
 			"test2",
@@ -64,6 +67,5 @@ func TestReadMetric(t *testing.T) {
 		if !reflect.DeepEqual(expected, actual) {
 			t.Errorf("expected = %+v\nactual = %+v", expected, actual)
 		}
-
 	}
 }
