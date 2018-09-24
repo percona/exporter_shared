@@ -24,7 +24,7 @@ import (
 
 func TestReadMetric(t *testing.T) {
 	for expected, m := range map[*Metric]prometheus.Metric{
-		&Metric{
+		{
 			"counter",
 			"metric description",
 			prometheus.Labels{"job": "test1", "instance": "test2"},
@@ -37,7 +37,7 @@ func TestReadMetric(t *testing.T) {
 			"test2",
 		),
 
-		&Metric{
+		{
 			"gauge",
 			"metric description",
 			prometheus.Labels{"job": "test1", "instance": "test2"},
@@ -50,7 +50,7 @@ func TestReadMetric(t *testing.T) {
 			"test2",
 		),
 
-		&Metric{
+		{
 			"untyped",
 			"metric description",
 			prometheus.Labels{"job": "test1", "instance": "test2"},
