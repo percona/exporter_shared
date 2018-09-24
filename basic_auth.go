@@ -75,9 +75,6 @@ type basicAuthHandler struct {
 	handler http.HandlerFunc
 }
 
-// check interface
-var _ http.Handler = (*basicAuthHandler)(nil)
-
 // ServeHTTP implements http.Handler.
 func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	username, password, _ := r.BasicAuth()
@@ -107,3 +104,8 @@ func handler(errorHandling promhttp.HandlerErrorHandling) http.Handler {
 
 	return handler
 }
+
+// check interfaces
+var (
+	_ http.Handler = (*basicAuthHandler)(nil)
+)
