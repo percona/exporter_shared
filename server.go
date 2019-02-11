@@ -25,11 +25,15 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
 	sslCertFileF = flag.String("web.ssl-cert-file", "", "Path to SSL certificate file.")
 	sslKeyFileF  = flag.String("web.ssl-key-file", "", "Path to SSL key file.")
+
+	sslCertFileFKingpin = kingpin.Flag("web.ssl-cert-file", "Path to SSL certificate file.").Default("").String()
+	sslKeyFileFKingpin  = kingpin.Flag("web.ssl-key-file", "Path to SSL key file.").Default("").String()
 
 	landingPage = template.Must(template.New("home").Parse(strings.TrimSpace(`
 <html>
@@ -77,6 +81,35 @@ func RunServer(name, addr, path string, errorHandling promhttp.HandlerErrorHandl
 	}
 }
 
+func RunServerFunc(name, addr, path string, handler func(http.ResponseWriter, *http.Request)) {
+	if (*sslCertFileFKingpin == "") != (*sslKeyFileFKingpin == "") {
+		log.Fatal("One of the flags --web.ssl-cert-file or --web.ssl-key-file is missing to enable HTTPS.")
+	}
+
+	ssl := false
+	if *sslCertFileFKingpin != "" && *sslKeyFileFKingpin != "" {
+		if _, err := os.Stat(*sslCertFileFKingpin); os.IsNotExist(err) {
+			log.Fatalf("SSL certificate file does not exist: %s", *sslCertFileFKingpin)
+		}
+		if _, err := os.Stat(*sslKeyFileFKingpin); os.IsNotExist(err) {
+			log.Fatalf("SSL key file does not exist: %s", *sslKeyFileFKingpin)
+		}
+		ssl = true
+	}
+
+	var buf bytes.Buffer
+	data := map[string]string{"name": name, "path": path}
+	if err := landingPage.Execute(&buf, data); err != nil {
+		log.Fatal(err)
+	}
+
+	if ssl {
+		runHTTPSfunc(addr, path, handler, buf.Bytes())
+	} else {
+		runHTTPfunc(addr, path, handler, buf.Bytes())
+	}
+}
+
 func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
@@ -110,6 +143,51 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write(landing)
+	})
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
+	log.Infof("Starting HTTP server for http://%s%s ...", addr, path)
+	log.Fatal(srv.ListenAndServe())
+}
+
+func runHTTPSfunc(addr, path string, handler func(http.ResponseWriter, *http.Request), landing []byte) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, handler)
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		w.Write(landing)
+	})
+
+	tlsCfg := &tls.Config{
+		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		},
+	}
+
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      mux,
+		TLSConfig:    tlsCfg,
+		TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)), // disable HTTP/2
+	}
+	log.Infof("Starting HTTPS server for https://%s%s ...", addr, path)
+	log.Fatal(srv.ListenAndServeTLS(*sslCertFileFKingpin, *sslKeyFileFKingpin))
+}
+
+func runHTTPfunc(addr, path string, handler func(http.ResponseWriter, *http.Request), landing []byte) {
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, handler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(landing)
 	})
