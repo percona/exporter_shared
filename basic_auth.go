@@ -16,7 +16,6 @@ package exporter_shared
 
 import (
 	"crypto/subtle"
-	"flag"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -30,15 +29,8 @@ import (
 )
 
 var (
-	authFileF = flag.String(
-		"web.auth-file", "",
-		"Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
-			"(overrides HTTP_AUTH environment variable).",
-	)
-	authFileFKingpin = kingpin.Flag(
-		"web.auth-file",
-		"Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
-			"(overrides HTTP_AUTH environment variable).").Default("").String()
+	authFileF = kingpin.Flag("web.auth-file", "Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
+		"(overrides HTTP_AUTH environment variable).").Default("").String()
 )
 
 // basicAuth combines username and password.
@@ -59,14 +51,6 @@ func readBasicAuth() *basicAuth {
 		}
 		if err = yaml.Unmarshal(bytes, &auth); err != nil {
 			log.Fatalf("cannot parse auth file %q: %s", *authFileF, err)
-		}
-	case *authFileFKingpin != "":
-		bytes, err := ioutil.ReadFile(*authFileFKingpin)
-		if err != nil {
-			log.Fatalf("cannot read auth file %q: %s", *authFileFKingpin, err)
-		}
-		if err = yaml.Unmarshal(bytes, &auth); err != nil {
-			log.Fatalf("cannot parse auth file %q: %s", *authFileFKingpin, err)
 		}
 	case httpAuth != "":
 		data := strings.SplitN(httpAuth, ":", 2)
@@ -108,7 +92,6 @@ func handler(errorHandling promhttp.HandlerErrorHandling) http.Handler {
 		ErrorLog:      log.NewErrorLogger(),
 		ErrorHandling: errorHandling,
 	})
-
 	auth := readBasicAuth()
 	if auth.Username != "" && auth.Password != "" {
 		handler = &basicAuthHandler{basicAuth: *auth, handler: handler.ServeHTTP}
