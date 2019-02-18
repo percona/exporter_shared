@@ -19,9 +19,13 @@ import (
 	"crypto/tls"
 	"flag"
 	"html/template"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
@@ -120,4 +124,45 @@ func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 	}
 	log.Infof("Starting HTTP server for http://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServe())
+}
+
+func getListenerByAddr(addr string) (net.Listener, error) {
+	var (
+		listener net.Listener
+		err      error
+	)
+
+	listenerNet, listenerRepr := parseAddr(addr)
+	if listener, err = net.Listen(listenerNet, listenerRepr); err != nil {
+		log.Fatalf("failed on listenener: %s", err)
+	}
+
+	if listenerNet == "unix" {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, syscall.SIGINT)
+		signal.Notify(c, syscall.SIGTERM)
+
+		go func() {
+			<-c
+			listener.Close()
+			os.Remove(listenerRepr)
+			log.Infof("Removing socket file: %s", listenerRepr)
+		}()
+	}
+
+	return listener, err
+}
+
+func parseAddr(addr string) (network, address string) {
+	if u, err := url.Parse(addr); err != nil {
+		network = "tcp"
+		address = addr
+	} else {
+		network = u.Scheme
+		address = u.Host
+		if network == "unix" {
+			address = u.Path
+		}
+	}
+	return network, address
 }
