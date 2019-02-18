@@ -27,8 +27,8 @@ import (
 )
 
 var (
-	sslCertFileF = kingpin.Flag("web.ssl-cert-file", "Path to SSL certificate file.").Default("").String()
-	sslKeyFileF  = kingpin.Flag("web.ssl-key-file", "Path to SSL key file.").Default("").String()
+	sslCertFileF = kingpin.Flag("web.ssl-cert-file", "Path to SSL certificate file.").String()
+	sslKeyFileF  = kingpin.Flag("web.ssl-key-file", "Path to SSL key file.").String()
 
 	landingPage = template.Must(template.New("home").Parse(strings.TrimSpace(`
 <html>
@@ -46,7 +46,7 @@ var (
 // RunServer runs server for exporter with given name (it is used on landing page) on given address,
 // exposing metrics under given path.
 // Function never returns.
-func RunServer(name, addr, path string, handler func(http.ResponseWriter, *http.Request)) {
+func RunServer(name, addr, path string, handler http.Handler) {
 	if (*sslCertFileF == "") != (*sslKeyFileF == "") {
 		log.Fatal("One of the flags --web.ssl-cert-file or --web.ssl-key-file is missing to enable HTTPS.")
 	}
@@ -69,9 +69,9 @@ func RunServer(name, addr, path string, handler func(http.ResponseWriter, *http.
 	}
 
 	if ssl {
-		runHTTPS(addr, path, http.HandlerFunc(handler), buf.Bytes())
+		runHTTPS(addr, path, handler, buf.Bytes())
 	} else {
-		runHTTP(addr, path, http.HandlerFunc(handler), buf.Bytes())
+		runHTTP(addr, path, handler, buf.Bytes())
 	}
 }
 

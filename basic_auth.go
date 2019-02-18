@@ -30,7 +30,7 @@ import (
 
 var (
 	authFileF = kingpin.Flag("web.auth-file", "Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
-		"(overrides HTTP_AUTH environment variable).").Default("").String()
+		"(overrides HTTP_AUTH environment variable).").String()
 )
 
 // basicAuth combines username and password.
@@ -69,7 +69,7 @@ func readBasicAuth() *basicAuth {
 // basicAuthHandler checks username and password before invoking provided handler.
 type basicAuthHandler struct {
 	basicAuth
-	handler http.HandlerFunc
+	authHandler http.HandlerFunc
 }
 
 // ServeHTTP implements http.Handler.
@@ -83,18 +83,18 @@ func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.handler(w, r)
+	h.authHandler(w, r)
 }
 
-// handler returns http.Handler for default Prometheus registry.
-func handler(errorHandling promhttp.HandlerErrorHandling) http.Handler {
+// authHandler returns http.Handler for default Prometheus registry.
+func authHandler(errorHandling promhttp.HandlerErrorHandling) http.Handler {
 	handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
 		ErrorLog:      log.NewErrorLogger(),
 		ErrorHandling: errorHandling,
 	})
 	auth := readBasicAuth()
 	if auth.Username != "" && auth.Password != "" {
-		handler = &basicAuthHandler{basicAuth: *auth, handler: handler.ServeHTTP}
+		handler = &basicAuthHandler{basicAuth: *auth, authHandler: handler.ServeHTTP}
 		log.Infoln("HTTP Basic authentication is enabled.")
 	}
 
