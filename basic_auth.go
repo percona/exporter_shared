@@ -21,8 +21,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
@@ -86,12 +84,9 @@ func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.authHandler(w, r)
 }
 
-// authHandler returns http.Handler for default Prometheus registry.
-func authHandler(errorHandling promhttp.HandlerErrorHandling) http.Handler {
-	handler := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
-		ErrorLog:      log.NewErrorLogger(),
-		ErrorHandling: errorHandling,
-	})
+// authHandler returns http.Handler with BasicAuth check.
+func authHandler(handler http.Handler) http.Handler {
+
 	auth := readBasicAuth()
 	if auth.Username != "" && auth.Password != "" {
 		handler = &basicAuthHandler{basicAuth: *auth, authHandler: handler.ServeHTTP}

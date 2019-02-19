@@ -68,10 +68,11 @@ func RunServer(name, addr, path string, handler http.Handler) {
 		log.Fatal(err)
 	}
 
+	authHandler := authHandler(handler)
 	if ssl {
-		runHTTPS(addr, path, handler, buf.Bytes())
+		runHTTPS(addr, path, authHandler, buf.Bytes())
 	} else {
-		runHTTP(addr, path, handler, buf.Bytes())
+		runHTTP(addr, path, authHandler, buf.Bytes())
 	}
 }
 
