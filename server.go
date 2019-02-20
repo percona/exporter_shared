@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package exporter_shared provides shared code for Percona Prometheus exporters.
 package exporter_shared
 
 import (
@@ -22,6 +23,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/log"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
@@ -43,8 +46,20 @@ var (
 `)))
 )
 
+// DefaultMetricsHandler returns metrics handler for default Prometheus gatherer/registerer
+// with logging and continuing on error.
+// Handler is not protected by HTTP basic authentication - it is done by RunServer.
+func DefaultMetricsHandler() http.Handler {
+	h := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
+		ErrorLog:      log.NewErrorLogger(),
+		ErrorHandling: promhttp.ContinueOnError,
+	})
+	return promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, h)
+}
+
 // RunServer runs server for exporter with given name (it is used on landing page) on given address,
-// exposing metrics under given path.
+// with HTTP basic authentication (if configured)
+// and with given HTTP handler (that should be created with DefaultMetricsHandler or manually).
 // Function never returns.
 func RunServer(name, addr, path string, handler http.Handler) {
 	if (*sslCertFileF == "") != (*sslKeyFileF == "") {
