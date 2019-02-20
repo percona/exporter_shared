@@ -64,10 +64,10 @@ func readBasicAuth() *basicAuth {
 	return &auth
 }
 
-// basicAuthHandler checks username and password before invoking provided handler.
+// basicAuthHandler checks username and password before invoking provided next handler.
 type basicAuthHandler struct {
 	basicAuth
-	authHandler http.HandlerFunc
+	nextHandler http.Handler
 }
 
 // ServeHTTP implements http.Handler.
@@ -81,16 +81,15 @@ func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.authHandler(w, r)
+	h.nextHandler.ServeHTTP(w, r)
 }
 
-// authHandler returns http.Handler with BasicAuth check.
+// authHandler wraps provided handler with basic authentication if it is configured.
 func authHandler(handler http.Handler) http.Handler {
-
 	auth := readBasicAuth()
 	if auth.Username != "" && auth.Password != "" {
-		handler = &basicAuthHandler{basicAuth: *auth, authHandler: handler.ServeHTTP}
 		log.Infoln("HTTP Basic authentication is enabled.")
+		return &basicAuthHandler{basicAuth: *auth, nextHandler: handler}
 	}
 
 	return handler
