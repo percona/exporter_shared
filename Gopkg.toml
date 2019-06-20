@@ -1,23 +1,6 @@
 [[constraint]]
-  # TODO switch to 1.x.x: https://github.com/prometheus/client_golang/releases
-  name = "github.com/prometheus/client_golang"
-  version = "0.9.4"
-
-[[constraint]]
   name = "github.com/prometheus/client_model"
   branch = "master"
-
-[[constraint]]
-  name = "github.com/prometheus/common"
-  version = "0.4.1"
-
-[[constraint]]
-  name = "gopkg.in/alecthomas/kingpin.v2"
-  version = "2.2.6"
-
-[[constraint]]
-  name = "gopkg.in/yaml.v2"
-  version = "2.2.2"
 
 [prune]
   go-tests = true
