@@ -1,6 +1,7 @@
 [[constraint]]
+  # TODO switch to 1.x.x: https://github.com/prometheus/client_golang/releases
   name = "github.com/prometheus/client_golang"
-  version = "0.9.2"
+  version = "0.9.4"
 
 [[constraint]]
   name = "github.com/prometheus/client_model"
@@ -8,7 +9,7 @@
 
 [[constraint]]
   name = "github.com/prometheus/common"
-  version = "0.3.0"
+  version = "0.4.1"
 
 [[constraint]]
   name = "gopkg.in/alecthomas/kingpin.v2"
