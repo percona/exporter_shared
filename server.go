@@ -93,16 +93,9 @@ func RunServer(name, addr, path string, handler http.Handler) {
 	}
 }
 
-func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
-	mux := http.NewServeMux()
-	mux.Handle(path, handler)
-	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-		w.Write(landing)
-	})
-
-	// see internal security baseline
-	tlsCfg := &tls.Config{
+// TLSConfig returns a new tls.Config instance configured according to Percona's security baseline.
+func TLSConfig() *tls.Config {
+	return &tls.Config{
 		MinVersion:               tls.VersionTLS12,
 		PreferServerCipherSuites: true,
 		CipherSuites: []uint16{
@@ -118,11 +111,20 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 			tls.TLS_RSA_WITH_AES_128_CBC_SHA256,
 		},
 	}
+}
+
+func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
+	mux := http.NewServeMux()
+	mux.Handle(path, handler)
+	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
+		w.Write(landing)
+	})
 
 	srv := &http.Server{
 		Addr:      addr,
 		Handler:   mux,
-		TLSConfig: tlsCfg,
+		TLSConfig: TLSConfig(),
 	}
 	log.Infof("Starting HTTPS server for https://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServeTLS(*sslCertFileF, *sslKeyFileF))
