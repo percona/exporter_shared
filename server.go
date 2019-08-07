@@ -18,8 +18,10 @@ package exporter_shared
 import (
 	"bytes"
 	"crypto/tls"
+	_ "expvar" // register /debug/vars on http.DefaultServeMux
 	"html/template"
 	"net/http"
+	_ "net/http/pprof" // register /debug/pprof http.DefaultServeMux
 	"os"
 	"strings"
 
