@@ -2,6 +2,14 @@
   name = "github.com/prometheus/client_model"
   branch = "master"
 
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/prometheus/common"
+  version = "0.6.0"
+
 [prune]
   go-tests = true
   non-go = true
