@@ -22,7 +22,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func TestFormat(t *testing.T) {
+func TestFormatParse(t *testing.T) {
 	metrics := []prometheus.Metric{
 		prometheus.MustNewConstMetric(
 			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
@@ -54,9 +54,17 @@ func TestFormat(t *testing.T) {
 		`# TYPE untyped untyped`,
 		`untyped{instance="test2",job="test1"} 36.6`,
 	}
+
 	actual := Format(metrics)
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("expected:\n%#v\n\nactual:\n%#v", expected, actual)
 		t.Errorf("expected:\n%s\n\nactual:\n%s", strings.Join(expected, "\n"), strings.Join(actual, "\n"))
+	}
+
+	metrics2 := Parse(actual)
+	actual2 := Format(metrics2)
+	if !reflect.DeepEqual(expected, actual2) {
+		t.Errorf("expected:\n%#v\n\nactual2:\n%#v", expected, actual2)
+		t.Errorf("expected:\n%s\n\nactual2:\n%s", strings.Join(expected, "\n"), strings.Join(actual2, "\n"))
 	}
 }

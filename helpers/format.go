@@ -15,9 +15,11 @@
 package helpers
 
 import (
+	"io"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 )
 
@@ -54,6 +56,29 @@ func Format(metrics []prometheus.Metric) []string {
 		}
 	}
 	return strings.Split(strings.TrimSpace(buf.String()), "\n")
+}
+
+// Parse converts strings in text exposition format to a slice of Prometheus metrics.
+func Parse(metrics []string) []prometheus.Metric {
+	r := strings.NewReader(strings.Join(metrics, "\n") + "\n")
+	d := expfmt.NewDecoder(r, expfmt.FmtText)
+
+	res := make([]prometheus.Metric, 0, 10)
+	for {
+		var family dto.MetricFamily
+		if err := d.Decode(&family); err != nil {
+			if err == io.EOF {
+				return res
+			}
+			panic(err)
+		}
+
+		for _, m := range family.Metric {
+			labels, typ, value := readDTOMetric(m)
+			mm := &Metric{family.GetName(), family.GetHelp(), labels, typ, value}
+			res = append(res, mm.Metric())
+		}
+	}
 }
 
 // check interfaces

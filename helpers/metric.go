@@ -60,35 +60,42 @@ func (m *Metric) Metric() prometheus.Metric {
 		panic(fmt.Sprintf("Unsupported metric type %#v", m.Type))
 	}
 
-	res, err := prometheus.NewConstMetric(prometheus.NewDesc(m.Name, m.Help, nil, m.Labels), valueType, m.Value)
-	if err != nil {
-		panic(err)
+	return prometheus.MustNewConstMetric(prometheus.NewDesc(m.Name, m.Help, nil, m.Labels), valueType, m.Value)
+}
+
+func readDTOMetric(m *dto.Metric) (labels prometheus.Labels, typ dto.MetricType, value float64) {
+	labels = make(prometheus.Labels, len(m.Label))
+	for _, pair := range m.Label {
+		labels[pair.GetName()] = pair.GetValue()
 	}
-	return res
+
+	switch {
+	case m.Gauge != nil:
+		typ = dto.MetricType_GAUGE
+		value = m.GetGauge().GetValue()
+	case m.Counter != nil:
+		typ = dto.MetricType_COUNTER
+		value = m.GetCounter().GetValue()
+	case m.Untyped != nil:
+		typ = dto.MetricType_UNTYPED
+		value = m.GetUntyped().GetValue()
+	default:
+		panic("unhandled metric type")
+	}
+
+	return
 }
 
 // ReadMetric extracts details from Prometheus metric.
 func ReadMetric(metric prometheus.Metric) *Metric {
-	pb := &dto.Metric{}
-	if err := metric.Write(pb); err != nil {
+	var m dto.Metric
+	if err := metric.Write(&m); err != nil {
 		panic(err)
 	}
 
 	name, help := getNameAndHelp(metric.Desc())
-	labels := make(prometheus.Labels, len(pb.Label))
-	for _, v := range pb.Label {
-		labels[v.GetName()] = v.GetValue()
-	}
-	if pb.Gauge != nil {
-		return &Metric{name, help, labels, dto.MetricType_GAUGE, pb.GetGauge().GetValue()}
-	}
-	if pb.Counter != nil {
-		return &Metric{name, help, labels, dto.MetricType_COUNTER, pb.GetCounter().GetValue()}
-	}
-	if pb.Untyped != nil {
-		return &Metric{name, help, labels, dto.MetricType_UNTYPED, pb.GetUntyped().GetValue()}
-	}
-	panic("Unsupported metric type")
+	labels, typ, value := readDTOMetric(&m)
+	return &Metric{name, help, labels, typ, value}
 }
 
 // ReadMetrics extracts details from Prometheus metrics.
