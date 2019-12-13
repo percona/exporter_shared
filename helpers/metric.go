@@ -122,11 +122,25 @@ func ReadMetric(metric prometheus.Metric) *Metric {
 	return &Metric{name, help, labels, typ, value}
 }
 
+// WriteMetric creates Prometheus metric.
+func WriteMetric(metric *Metric) prometheus.Metric {
+	return metric.Metric()
+}
+
 // ReadMetrics extracts details from Prometheus metrics.
 func ReadMetrics(metrics []prometheus.Metric) []*Metric {
 	res := make([]*Metric, len(metrics))
 	for i, m := range metrics {
 		res[i] = ReadMetric(m)
+	}
+	return res
+}
+
+// WriteMetrics creates Prometheus metrics.
+func WriteMetrics(metrics []*Metric) []prometheus.Metric {
+	res := make([]prometheus.Metric, len(metrics))
+	for i, m := range metrics {
+		res[i] = WriteMetric(m)
 	}
 	return res
 }
