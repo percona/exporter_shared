@@ -46,6 +46,27 @@ type Metric struct {
 	Value  float64
 }
 
+// Metric returns Prometheus metric with same information.
+func (m *Metric) Metric() prometheus.Metric {
+	var valueType prometheus.ValueType
+	switch m.Type {
+	case dto.MetricType_GAUGE:
+		valueType = prometheus.GaugeValue
+	case dto.MetricType_COUNTER:
+		valueType = prometheus.CounterValue
+	case dto.MetricType_UNTYPED:
+		valueType = prometheus.UntypedValue
+	default:
+		panic(fmt.Sprintf("Unsupported metric type %#v", m.Type))
+	}
+
+	res, err := prometheus.NewConstMetric(prometheus.NewDesc(m.Name, m.Help, nil, m.Labels), valueType, m.Value)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
 // ReadMetric extracts details from Prometheus metric.
 func ReadMetric(m prometheus.Metric) *Metric {
 	pb := &dto.Metric{}

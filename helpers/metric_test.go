@@ -63,9 +63,15 @@ func TestReadMetric(t *testing.T) {
 			"test2",
 		),
 	} {
-		actual := ReadMetric(m)
-		if !reflect.DeepEqual(expected, actual) {
-			t.Errorf("expected = %+v\nactual = %+v", expected, actual)
+		actual1 := ReadMetric(m)
+		if !reflect.DeepEqual(expected, actual1) {
+			t.Errorf("ReadMetric 1:\nexpected = %+v\nactual1 = %+v", expected, actual1)
+		}
+
+		m2 := actual1.Metric()
+		actual2 := ReadMetric(m2)
+		if !reflect.DeepEqual(expected, actual2) {
+			t.Errorf("ReadMetric 2:\nexpected = %+v\actual2 = %+v", expected, actual2)
 		}
 	}
 }
