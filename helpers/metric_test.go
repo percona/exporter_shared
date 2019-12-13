@@ -16,6 +16,7 @@ package helpers
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,24 +28,24 @@ func TestReadMetric(t *testing.T) {
 		{
 			"counter",
 			"metric description",
-			prometheus.Labels{"job": "test1", "instance": "test2"},
+			prometheus.Labels{"job": "test", "instance": "test1"},
 			dto.MetricType_COUNTER,
 			36.6,
 		}: prometheus.MustNewConstMetric(
-			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.CounterValue,
 			36.6,
-			"test2",
+			"test1",
 		),
 
 		{
 			"gauge",
 			"metric description",
-			prometheus.Labels{"job": "test1", "instance": "test2"},
+			prometheus.Labels{"job": "test", "instance": "test2"},
 			dto.MetricType_GAUGE,
 			36.6,
 		}: prometheus.MustNewConstMetric(
-			prometheus.NewDesc("gauge", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("gauge", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.GaugeValue,
 			36.6,
 			"test2",
@@ -53,14 +54,14 @@ func TestReadMetric(t *testing.T) {
 		{
 			"untyped",
 			"metric description",
-			prometheus.Labels{"job": "test1", "instance": "test2"},
+			prometheus.Labels{"job": "test", "instance": "test3"},
 			dto.MetricType_UNTYPED,
 			36.6,
 		}: prometheus.MustNewConstMetric(
-			prometheus.NewDesc("untyped", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("untyped", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.UntypedValue,
 			36.6,
-			"test2",
+			"test3",
 		),
 	} {
 		actual1 := ReadMetric(m)
@@ -73,5 +74,58 @@ func TestReadMetric(t *testing.T) {
 		if !reflect.DeepEqual(expected, actual2) {
 			t.Errorf("ReadMetric 2:\nexpected = %+v\actual2 = %+v", expected, actual2)
 		}
+	}
+}
+
+func TestLess(t *testing.T) {
+	metrics := []prometheus.Metric{
+		prometheus.MustNewConstMetric(
+			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
+			prometheus.CounterValue,
+			36.6,
+			"test3",
+		),
+		prometheus.MustNewConstMetric(
+			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
+			prometheus.CounterValue,
+			36.6,
+			"test1",
+		),
+		prometheus.MustNewConstMetric(
+			prometheus.NewDesc("gauge", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
+			prometheus.GaugeValue,
+			36.6,
+			"test2",
+		),
+	}
+
+	actual := ReadMetrics(metrics)
+	sort.Slice(actual, func(i, j int) bool { return actual[i].Less(actual[j]) })
+
+	expected := []*Metric{
+		{
+			"counter",
+			"metric description",
+			prometheus.Labels{"job": "test", "instance": "test1"},
+			dto.MetricType_COUNTER,
+			36.6,
+		},
+		{
+			"counter",
+			"metric description",
+			prometheus.Labels{"job": "test", "instance": "test3"},
+			dto.MetricType_COUNTER,
+			36.6,
+		},
+		{
+			"gauge",
+			"metric description",
+			prometheus.Labels{"job": "test", "instance": "test2"},
+			dto.MetricType_GAUGE,
+			36.6,
+		},
+	}
+	if !reflect.DeepEqual(expected, actual) {
+		t.Errorf("Less:\nexpected = %+v\actual = %+v", expected, actual)
 	}
 }

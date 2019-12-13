@@ -25,34 +25,34 @@ import (
 func TestFormatParse(t *testing.T) {
 	metrics := []prometheus.Metric{
 		prometheus.MustNewConstMetric(
-			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.CounterValue,
 			36.6,
-			"test2",
+			"test1",
 		),
 		prometheus.MustNewConstMetric(
-			prometheus.NewDesc("gauge", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("gauge", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.GaugeValue,
 			36.6,
 			"test2",
 		),
 		prometheus.MustNewConstMetric(
-			prometheus.NewDesc("untyped", "metric description", []string{"instance"}, prometheus.Labels{"job": "test1"}),
+			prometheus.NewDesc("untyped", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.UntypedValue,
 			36.6,
-			"test2",
+			"test3",
 		),
 	}
 	expected := []string{
 		`# HELP counter metric description`,
 		`# TYPE counter counter`,
-		`counter{instance="test2",job="test1"} 36.6`,
+		`counter{instance="test1",job="test"} 36.6`,
 		`# HELP gauge metric description`,
 		`# TYPE gauge gauge`,
-		`gauge{instance="test2",job="test1"} 36.6`,
+		`gauge{instance="test2",job="test"} 36.6`,
 		`# HELP untyped metric description`,
 		`# TYPE untyped untyped`,
-		`untyped{instance="test2",job="test1"} 36.6`,
+		`untyped{instance="test3",job="test"} 36.6`,
 	}
 
 	actual := Format(metrics)

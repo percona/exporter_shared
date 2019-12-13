@@ -25,6 +25,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/model"
 )
 
 var nameAndHelpRE = regexp.MustCompile(`fqName: "(\w+)", help: "([^"]+)"`)
@@ -44,6 +45,29 @@ type Metric struct {
 	Labels prometheus.Labels
 	Type   dto.MetricType
 	Value  float64
+}
+
+// Less returns true if m < m2 in some stable order. Can be used for sorting.
+func (m *Metric) Less(m2 *Metric) bool {
+	if m.Name != m2.Name {
+		return m.Name < m2.Name
+	}
+	if m.Help != m2.Help {
+		return m.Help < m2.Help
+	}
+	if m.Type != m2.Type {
+		return m.Type < m2.Type
+	}
+
+	mLabels := make(model.LabelSet, len(m.Labels))
+	for k, v := range m.Labels {
+		mLabels[model.LabelName(k)] = model.LabelValue(v)
+	}
+	m2Labels := make(model.LabelSet, len(m2.Labels))
+	for k, v := range m2.Labels {
+		m2Labels[model.LabelName(k)] = model.LabelValue(v)
+	}
+	return mLabels.Before(m2Labels)
 }
 
 // Metric returns Prometheus metric with same information.
