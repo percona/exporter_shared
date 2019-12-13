@@ -128,4 +128,8 @@ func TestLess(t *testing.T) {
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Less:\nexpected = %+v\actual = %+v", expected, actual)
 	}
+
+	if s := expected[0].String(); s != "{Name:counter Help:metric description Labels:map[instance:test1 job:test] Type:COUNTER Value:36.6}" {
+		t.Errorf("Unexpected String(): %q for %#v", s, expected[0])
+	}
 }
