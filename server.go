@@ -21,7 +21,7 @@ import (
 	_ "expvar" // register /debug/vars on http.DefaultServeMux
 	"html/template"
 	"net/http"
-	_ "net/http/pprof" // register /debug/pprof http.DefaultServeMux
+	"net/http/pprof"
 	"os"
 	"strings"
 
@@ -69,6 +69,7 @@ func RunServer(name, addr, path string, handler http.Handler) {
 	}
 
 	ssl := false
+
 	if *sslCertFileF != "" && *sslKeyFileF != "" {
 		if _, err := os.Stat(*sslCertFileF); os.IsNotExist(err) {
 			log.Fatalf("SSL certificate file does not exist: %s", *sslCertFileF)
@@ -86,6 +87,7 @@ func RunServer(name, addr, path string, handler http.Handler) {
 	}
 
 	h := authHandler(handler)
+
 	if ssl {
 		runHTTPS(addr, path, h, buf.Bytes())
 	} else {
@@ -126,12 +128,20 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 		Handler:   mux,
 		TLSConfig: TLSConfig(),
 	}
+
 	log.Infof("Starting HTTPS server for https://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServeTLS(*sslCertFileF, *sslKeyFileF))
 }
 
 func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 	mux := http.NewServeMux()
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
 	mux.Handle(path, handler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(landing)
@@ -141,6 +151,7 @@ func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 		Addr:    addr,
 		Handler: mux,
 	}
+
 	log.Infof("Starting HTTP server for http://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServe())
 }
