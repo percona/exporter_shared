@@ -31,6 +31,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+//nolint:gochecknoglobals
 var (
 	sslCertFileF = kingpin.Flag("web.ssl-cert-file", "Path to SSL certificate file.").String()
 	sslKeyFileF  = kingpin.Flag("web.ssl-key-file", "Path to SSL key file.").String()
@@ -56,6 +57,7 @@ func DefaultMetricsHandler() http.Handler {
 		ErrorLog:      log.NewErrorLogger(),
 		ErrorHandling: promhttp.ContinueOnError,
 	})
+
 	return promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, h)
 }
 
@@ -116,11 +118,14 @@ func TLSConfig() *tls.Config {
 }
 
 func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
-	mux := http.NewServeMux()
+	mux := baseServeMux()
+
 	mux.Handle(path, handler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
-		w.Write(landing)
+		if _, err := w.Write(landing); err != nil {
+			log.Errorf("Cannot write landing page: %s", err)
+		}
 	})
 
 	srv := &http.Server{
@@ -134,17 +139,13 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 }
 
 func runHTTP(addr, path string, handler http.Handler, landing []byte) {
-	mux := http.NewServeMux()
-
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	mux := baseServeMux()
 
 	mux.Handle(path, handler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(landing)
+		if _, err := w.Write(landing); err != nil {
+			log.Errorf("Cannot write landing page: %s", err)
+		}
 	})
 
 	srv := &http.Server{
@@ -154,4 +155,18 @@ func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 
 	log.Infof("Starting HTTP server for http://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServe())
+}
+
+func baseServeMux() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	mux.Handle("/debug/vars", http.DefaultServeMux)
+
+	return mux
 }
