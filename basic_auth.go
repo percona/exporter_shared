@@ -26,10 +26,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var (
-	authFileF = kingpin.Flag("web.auth-file", "Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
-		"(overrides HTTP_AUTH environment variable).").String()
-)
+var authFileF = kingpin.Flag("web.auth-file", "Path to YAML file with server_user, server_password keys for HTTP Basic authentication "+
+	"(overrides HTTP_AUTH environment variable).").String()
 
 // basicAuth combines username and password.
 type basicAuth struct {
