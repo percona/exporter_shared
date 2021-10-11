@@ -99,19 +99,20 @@ func TLSConfig() *tls.Config {
 		MinVersion:               tls.VersionTLS12,
 		PreferServerCipherSuites: true,
 		CipherSuites: []uint16{
-            		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-            		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-            		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-            		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-        	},
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+		},
 	}
 }
 
 func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
+	mux.Handle("/debug/", http.DefaultServeMux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Add("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 		w.Write(landing)
@@ -129,6 +130,7 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 	mux := http.NewServeMux()
 	mux.Handle(path, handler)
+	mux.Handle("/debug/", http.DefaultServeMux)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(landing)
 	})
