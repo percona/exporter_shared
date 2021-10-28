@@ -138,6 +138,5 @@ func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 		Handler: mux,
 	}
 	log.Printf("Starting HTTP server for http://%s%s ...", addr, path)
-	srv.ListenAndServe()
 	log.Fatal(srv.ListenAndServe())
 }
