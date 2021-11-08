@@ -17,11 +17,11 @@ package exporter_shared
 import (
 	"crypto/subtle"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/prometheus/common/log"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -88,7 +88,7 @@ func (h *basicAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func authHandler(handler http.Handler) http.Handler {
 	auth := readBasicAuth()
 	if auth.Username != "" && auth.Password != "" {
-		log.Infoln("HTTP Basic authentication is enabled.")
+		log.Println("HTTP Basic authentication is enabled.")
 		return &basicAuthHandler{basicAuth: *auth, nextHandler: handler}
 	}
 

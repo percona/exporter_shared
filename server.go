@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	_ "expvar" // register /debug/vars on http.DefaultServeMux
 	"html/template"
+	"log"
 	"net/http"
 	_ "net/http/pprof" // register /debug/pprof http.DefaultServeMux
 	"os"
@@ -27,7 +28,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -53,7 +53,7 @@ var (
 // Handler is not protected by HTTP basic authentication - it is done by RunServer.
 func DefaultMetricsHandler() http.Handler {
 	h := promhttp.HandlerFor(prometheus.DefaultGatherer, promhttp.HandlerOpts{
-		ErrorLog:      log.NewErrorLogger(),
+		ErrorLog:      log.New(os.Stderr, "", log.LstdFlags),
 		ErrorHandling: promhttp.ContinueOnError,
 	})
 	return promhttp.InstrumentMetricHandler(prometheus.DefaultRegisterer, h)
@@ -99,13 +99,13 @@ func TLSConfig() *tls.Config {
 		MinVersion:               tls.VersionTLS12,
 		PreferServerCipherSuites: true,
 		CipherSuites: []uint16{
-            		tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-            		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-            		tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            		tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-            		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
-        	},
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+		},
 	}
 }
 
@@ -122,7 +122,7 @@ func runHTTPS(addr, path string, handler http.Handler, landing []byte) {
 		Handler:   mux,
 		TLSConfig: TLSConfig(),
 	}
-	log.Infof("Starting HTTPS server for https://%s%s ...", addr, path)
+	log.Printf("Starting HTTPS server for https://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServeTLS(*sslCertFileF, *sslKeyFileF))
 }
 
@@ -137,6 +137,6 @@ func runHTTP(addr, path string, handler http.Handler, landing []byte) {
 		Addr:    addr,
 		Handler: mux,
 	}
-	log.Infof("Starting HTTP server for http://%s%s ...", addr, path)
+	log.Printf("Starting HTTP server for http://%s%s ...", addr, path)
 	log.Fatal(srv.ListenAndServe())
 }
