@@ -49,7 +49,7 @@ func Format(metrics []prometheus.Metric) []string {
 	}
 
 	var buf strings.Builder
-	e := expfmt.NewEncoder(&buf, expfmt.FmtText)
+	e := expfmt.NewEncoder(&buf, expfmt.NewFormat(expfmt.TypeTextPlain))
 	for _, f := range families {
 		if err = e.Encode(f); err != nil {
 			panic(err)
@@ -61,7 +61,7 @@ func Format(metrics []prometheus.Metric) []string {
 // Parse converts strings in text exposition format to a slice of Prometheus metrics.
 func Parse(metrics []string) []prometheus.Metric {
 	r := strings.NewReader(strings.Join(metrics, "\n") + "\n")
-	d := expfmt.NewDecoder(r, expfmt.FmtText)
+	d := expfmt.NewDecoder(r, expfmt.NewFormat(expfmt.TypeTextPlain))
 
 	res := make([]prometheus.Metric, 0, 10)
 	for {
