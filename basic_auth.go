@@ -22,7 +22,7 @@ import (
 	"os"
 	"strings"
 
-	"gopkg.in/alecthomas/kingpin.v2"
+	"github.com/alecthomas/kingpin/v2"
 	"gopkg.in/yaml.v2"
 )
 
