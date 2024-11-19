@@ -1,6 +1,6 @@
 module github.com/percona/exporter_shared
 
-go 1.22
+go 1.23
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
