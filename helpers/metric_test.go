@@ -15,6 +15,7 @@
 package helpers
 
 import (
+	"math"
 	"reflect"
 	"sort"
 	"testing"
@@ -26,11 +27,11 @@ import (
 func TestReadMetric(t *testing.T) {
 	for expected, m := range map[*Metric]prometheus.Metric{
 		{
-			"counter",
-			"metric description",
-			prometheus.Labels{"job": "test", "instance": "test1"},
-			dto.MetricType_COUNTER,
-			36.6,
+			Name:   "counter",
+			Help:   "metric description",
+			Labels: prometheus.Labels{"job": "test", "instance": "test1"},
+			Type:   dto.MetricType_COUNTER,
+			Value:  36.6,
 		}: prometheus.MustNewConstMetric(
 			prometheus.NewDesc("counter", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.CounterValue,
@@ -39,24 +40,49 @@ func TestReadMetric(t *testing.T) {
 		),
 
 		{
-			"gauge",
-			"metric description",
-			prometheus.Labels{"job": "test", "instance": "test2"},
-			dto.MetricType_GAUGE,
-			36.6,
+			Name:   "gauge",
+			Help:   "metric description",
+			Labels: prometheus.Labels{"job": "test", "instance": "test2"},
+			Type:   dto.MetricType_GAUGE,
+			Value:  36.6,
 		}: prometheus.MustNewConstMetric(
 			prometheus.NewDesc("gauge", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.GaugeValue,
 			36.6,
 			"test2",
 		),
-
 		{
-			"untyped",
-			"metric description",
-			prometheus.Labels{"job": "test", "instance": "test3"},
-			dto.MetricType_UNTYPED,
+			Name:   "histogram",
+			Help:   "metric description",
+			Labels: prometheus.Labels{"job": "test", "instance": "test3"},
+			Type:   dto.MetricType_HISTOGRAM,
+			Value:  3.66, // mean: 36.6 / 10
+			Count:  10,
+			Sum:    36.6,
+			Buckets: map[float64]uint64{
+				0.1:         1,
+				1.0:         2,
+				10.0:        3,
+				math.Inf(1): 4,
+			},
+		}: prometheus.MustNewConstHistogram(
+			prometheus.NewDesc("histogram", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
+			10,
 			36.6,
+			map[float64]uint64{
+				0.1:         1,
+				1.0:         2,
+				10.0:        3,
+				math.Inf(1): 4,
+			},
+			"test3",
+		),
+		{
+			Name:   "untyped",
+			Help:   "metric description",
+			Labels: prometheus.Labels{"job": "test", "instance": "test3"},
+			Type:   dto.MetricType_UNTYPED,
+			Value:  36.6,
 		}: prometheus.MustNewConstMetric(
 			prometheus.NewDesc("untyped", "metric description", []string{"instance"}, prometheus.Labels{"job": "test"}),
 			prometheus.UntypedValue,
@@ -104,32 +130,85 @@ func TestLess(t *testing.T) {
 
 	expected := []*Metric{
 		{
-			"counter",
-			"metric description",
-			prometheus.Labels{"job": "test", "instance": "test1"},
-			dto.MetricType_COUNTER,
-			36.6,
+			Name:   "counter",
+			Help:   "metric description",
+			Labels: prometheus.Labels{"job": "test", "instance": "test1"},
+			Type:   dto.MetricType_COUNTER,
+			Value:  36.6,
 		},
 		{
-			"counter",
-			"metric description",
-			prometheus.Labels{"job": "test", "instance": "test3"},
-			dto.MetricType_COUNTER,
-			36.6,
+			Name:   "counter",
+			Help:   "metric description",
+			Labels: prometheus.Labels{"job": "test", "instance": "test3"},
+			Type:   dto.MetricType_COUNTER,
+			Value:  36.6,
 		},
 		{
-			"gauge",
-			"metric description",
-			prometheus.Labels{"job": "test", "instance": "test2"},
-			dto.MetricType_GAUGE,
-			36.6,
+			Name:   "gauge",
+			Help:   "metric description",
+			Labels: prometheus.Labels{"job": "test", "instance": "test2"},
+			Type:   dto.MetricType_GAUGE,
+			Value:  36.6,
 		},
 	}
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Less:\nexpected = %+v\actual = %+v", expected, actual)
 	}
 
-	if s := expected[0].String(); s != "{Name:counter Help:metric description Labels:map[instance:test1 job:test] Type:COUNTER Value:36.6}" {
+	if s := expected[0].String(); s != "{Name:counter Help:metric description Labels:map[instance:test1 job:test] Type:COUNTER Value:36.6 Count:0 Sum:0 Buckets:map[]}" {
 		t.Errorf("Unexpected String(): %q for %#v", s, expected[0])
+	}
+}
+
+func TestHistogramSupport(t *testing.T) {
+	// Test creating a histogram metric
+	histogram := &Metric{
+		Name:   "test_histogram",
+		Help:   "A test histogram",
+		Labels: prometheus.Labels{"method": "GET", "status": "200"},
+		Type:   dto.MetricType_HISTOGRAM,
+		Value:  5.5, // mean
+		Count:  100,
+		Sum:    550.0,
+		Buckets: map[float64]uint64{
+			0.1:         10,
+			0.5:         25,
+			1.0:         50,
+			5.0:         75,
+			10.0:        90,
+			math.Inf(1): 100,
+		},
+	}
+
+	// Test converting to prometheus.Metric
+	promMetric := histogram.Metric()
+
+	// Test reading it back
+	readBack := ReadMetric(promMetric)
+
+	// Verify all fields match
+	if readBack.Name != histogram.Name {
+		t.Errorf("Name mismatch: expected %q, got %q", histogram.Name, readBack.Name)
+	}
+	if readBack.Help != histogram.Help {
+		t.Errorf("Help mismatch: expected %q, got %q", histogram.Help, readBack.Help)
+	}
+	if !reflect.DeepEqual(readBack.Labels, histogram.Labels) {
+		t.Errorf("Labels mismatch: expected %v, got %v", histogram.Labels, readBack.Labels)
+	}
+	if readBack.Type != histogram.Type {
+		t.Errorf("Type mismatch: expected %v, got %v", histogram.Type, readBack.Type)
+	}
+	if readBack.Count != histogram.Count {
+		t.Errorf("Count mismatch: expected %d, got %d", histogram.Count, readBack.Count)
+	}
+	if readBack.Sum != histogram.Sum {
+		t.Errorf("Sum mismatch: expected %f, got %f", histogram.Sum, readBack.Sum)
+	}
+	if !reflect.DeepEqual(readBack.Buckets, histogram.Buckets) {
+		t.Errorf("Buckets mismatch: expected %v, got %v", histogram.Buckets, readBack.Buckets)
+	}
+	if readBack.Value != histogram.Value {
+		t.Errorf("Value mismatch: expected %f, got %f", histogram.Value, readBack.Value)
 	}
 }
