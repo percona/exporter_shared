@@ -15,8 +15,8 @@
 // Package helpers provides test helpers for Prometheus exporters.
 //
 // It contains workarounds for the following issues:
-//  * https://github.com/prometheus/client_golang/issues/322
-//  * https://github.com/prometheus/client_golang/issues/323
+//   - https://github.com/prometheus/client_golang/issues/322
+//   - https://github.com/prometheus/client_golang/issues/323
 package helpers
 
 import (
@@ -45,6 +45,11 @@ type Metric struct {
 	Labels prometheus.Labels
 	Type   dto.MetricType
 	Value  float64
+
+	// Histogram-specific fields
+	Count   uint64             // Total number of observations
+	Sum     float64            // Sum of all observations
+	Buckets map[float64]uint64 // Map of bucket upper bounds to cumulative counts
 }
 
 func (m *Metric) String() string {
@@ -76,22 +81,26 @@ func (m *Metric) Less(m2 *Metric) bool {
 
 // Metric returns Prometheus metric with same information.
 func (m *Metric) Metric() prometheus.Metric {
-	var valueType prometheus.ValueType
 	switch m.Type {
 	case dto.MetricType_GAUGE:
-		valueType = prometheus.GaugeValue
+		return prometheus.MustNewConstMetric(prometheus.NewDesc(m.Name, m.Help, nil, m.Labels), prometheus.GaugeValue, m.Value)
 	case dto.MetricType_COUNTER:
-		valueType = prometheus.CounterValue
+		return prometheus.MustNewConstMetric(prometheus.NewDesc(m.Name, m.Help, nil, m.Labels), prometheus.CounterValue, m.Value)
 	case dto.MetricType_UNTYPED:
-		valueType = prometheus.UntypedValue
+		return prometheus.MustNewConstMetric(prometheus.NewDesc(m.Name, m.Help, nil, m.Labels), prometheus.UntypedValue, m.Value)
+	case dto.MetricType_HISTOGRAM:
+		return prometheus.MustNewConstHistogram(
+			prometheus.NewDesc(m.Name, m.Help, nil, m.Labels),
+			m.Count,
+			m.Sum,
+			m.Buckets,
+		)
 	default:
 		panic(fmt.Sprintf("Unsupported metric type %#v", m.Type))
 	}
-
-	return prometheus.MustNewConstMetric(prometheus.NewDesc(m.Name, m.Help, nil, m.Labels), valueType, m.Value)
 }
 
-func readDTOMetric(m *dto.Metric) (labels prometheus.Labels, typ dto.MetricType, value float64) {
+func readDTOMetric(m *dto.Metric) (labels prometheus.Labels, typ dto.MetricType, value float64, count uint64, sum float64, buckets map[float64]uint64) {
 	labels = make(prometheus.Labels, len(m.Label))
 	for _, pair := range m.Label {
 		labels[pair.GetName()] = pair.GetValue()
@@ -107,6 +116,19 @@ func readDTOMetric(m *dto.Metric) (labels prometheus.Labels, typ dto.MetricType,
 	case m.Untyped != nil:
 		typ = dto.MetricType_UNTYPED
 		value = m.GetUntyped().GetValue()
+	case m.Histogram != nil:
+		typ = dto.MetricType_HISTOGRAM
+		hist := m.GetHistogram()
+		count = hist.GetSampleCount()
+		sum = hist.GetSampleSum()
+		buckets = make(map[float64]uint64)
+		for _, b := range hist.Bucket {
+			buckets[b.GetUpperBound()] = b.GetCumulativeCount()
+		}
+		// For histogram, value can be the mean
+		if count > 0 {
+			value = sum / float64(count)
+		}
 	default:
 		panic("unhandled metric type")
 	}
@@ -122,8 +144,17 @@ func ReadMetric(metric prometheus.Metric) *Metric {
 	}
 
 	name, help := getNameAndHelp(metric.Desc())
-	labels, typ, value := readDTOMetric(&m)
-	return &Metric{name, help, labels, typ, value}
+	labels, typ, value, count, sum, buckets := readDTOMetric(&m)
+	return &Metric{
+		Name:    name,
+		Help:    help,
+		Labels:  labels,
+		Type:    typ,
+		Value:   value,
+		Count:   count,
+		Sum:     sum,
+		Buckets: buckets,
+	}
 }
 
 // WriteMetric creates Prometheus metric.
