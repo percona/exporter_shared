@@ -74,8 +74,17 @@ func Parse(metrics []string) []prometheus.Metric {
 		}
 
 		for _, m := range family.Metric {
-			labels, typ, value := readDTOMetric(m)
-			mm := &Metric{family.GetName(), family.GetHelp(), labels, typ, value}
+			labels, typ, value, count, sum, buckets := readDTOMetric(m)
+			mm := &Metric{
+				Name:    family.GetName(),
+				Help:    family.GetHelp(),
+				Labels:  labels,
+				Type:    typ,
+				Value:   value,
+				Count:   count,
+				Sum:     sum,
+				Buckets: buckets,
+			}
 			res = append(res, mm.Metric())
 		}
 	}
